@@ -1,4 +1,4 @@
-name: Frontend CI Pipeline
+name: Frontend CI/CD Pipeline
 
 on:
   push:
@@ -6,10 +6,21 @@ on:
   pull_request:
     branches: [ main, master ]
 
+# Set permissions for GitHub Actions to deploy to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Prevent duplicate deployment runs from interfering with each other
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 jobs:
+  # 1. Continuous Integration (CI) Job: Install, Test, and Build
   build-and-test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -17,7 +28,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '16'  # Downgraded to Node 16 to support older react-scripts natively
+          node-version: '16'
 
       - name: Install Dependencies
         run: npm install
@@ -31,3 +42,22 @@ jobs:
         env:
           CI: false
         run: npm run build
+
+      - name: Upload Pages Artifact
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './build'
+
+  # 2. Continuous Deployment (CD) Job: Deploy compiled files to GitHub Pages
+  deploy:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
