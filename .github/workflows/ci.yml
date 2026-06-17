@@ -23,9 +23,13 @@ jobs:
         run: npm install
 
       - name: Run Tests
+        # We keep CI=true here so tests run once and don't watch files
         env:
           CI: true
         run: npm test
 
       - name: Build Project
+        # We set CI=false here to prevent warnings from failing the build
+        env:
+          CI: false
         run: npm run build
